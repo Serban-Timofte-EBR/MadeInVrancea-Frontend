@@ -1,0 +1,405 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import Stack from "@mui/material/Stack";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Stepper from "@mui/material/Stepper";
+import Step from "@mui/material/Step";
+import StepLabel from "@mui/material/StepLabel";
+import Switch from "@mui/material/Switch";
+import Divider from "@mui/material/Divider";
+import { alpha } from "@mui/material/styles";
+import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
+import type { CategorySlug } from "../../types";
+import { categoryOrder, categoryMeta } from "../../data/categories";
+import { DAY_NAMES_RO } from "../../lib/hours";
+
+const steps = ["Date firmă", "Contact & Program", "Poze & Locație"];
+const FOCSANI: [number, number] = [45.6966, 27.1863];
+
+const pinIcon = L.divIcon({
+  className: "",
+  html: '<div class="miv-pin" style="background:#8C2F39"></div>',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+});
+
+function MapClickHandler({
+  onChange,
+}: {
+  onChange: (p: [number, number]) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      onChange([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return null;
+}
+
+function LocationPicker({
+  position,
+  onChange,
+}: {
+  position: [number, number];
+  onChange: (p: [number, number]) => void;
+}) {
+  return (
+    <MapContainer
+      center={position}
+      zoom={12}
+      style={{ height: "100%", width: "100%" }}
+    >
+      <TileLayer
+        attribution="&copy; OpenStreetMap &copy; CARTO"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+      />
+      <Marker
+        position={position}
+        icon={pinIcon}
+        draggable
+        eventHandlers={{
+          dragend(e) {
+            const ll = e.target.getLatLng();
+            onChange([ll.lat, ll.lng]);
+          },
+        }}
+      />
+      <MapClickHandler onChange={onChange} />
+    </MapContainer>
+  );
+}
+
+function UploadZone({ label }: { label: string }) {
+  return (
+    <Box
+      sx={{
+        border: "2px dashed",
+        borderColor: "divider",
+        borderRadius: 3,
+        p: 3,
+        textAlign: "center",
+        transition: "border-color 0.2s ease, background-color 0.2s ease",
+        cursor: "pointer",
+        "&:hover": {
+          borderColor: "primary.main",
+          bgcolor: alpha("#8C2F39", 0.03),
+        },
+      }}
+    >
+      <CloudUploadRoundedIcon
+        sx={{ fontSize: 34, color: "text.secondary", mb: 1 }}
+      />
+      <Typography sx={{ fontWeight: 700 }}>{label}</Typography>
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+        Trage o imagine aici sau apasă pentru a încărca
+      </Typography>
+    </Box>
+  );
+}
+
+export default function OnboardingPage() {
+  const navigate = useNavigate();
+  const [activeStep, setActiveStep] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [category, setCategory] = useState<CategorySlug | "">("");
+  const [position, setPosition] = useState<[number, number]>(FOCSANI);
+  const [closedDays, setClosedDays] = useState<number[]>([7]);
+
+  const toggleClosed = (day: number) =>
+    setClosedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+    );
+
+  const isLast = activeStep === steps.length - 1;
+  const handleNext = () =>
+    isLast ? setSubmitted(true) : setActiveStep((s) => s + 1);
+  const handleBack = () => setActiveStep((s) => Math.max(0, s - 1));
+
+  const coords = useMemo(
+    () => `${position[0].toFixed(5)}, ${position[1].toFixed(5)}`,
+    [position],
+  );
+
+  if (submitted) {
+    return (
+      <Box
+        sx={{
+          maxWidth: 560,
+          mx: "auto",
+          textAlign: "center",
+          py: { xs: 4, md: 8 },
+        }}
+      >
+        <Box
+          sx={{
+            width: 84,
+            height: 84,
+            mx: "auto",
+            mb: 3,
+            borderRadius: "50%",
+            display: "grid",
+            placeItems: "center",
+            color: "success.main",
+            bgcolor: alpha("#3B7A57", 0.12),
+          }}
+        >
+          <CheckCircleRoundedIcon sx={{ fontSize: 46 }} />
+        </Box>
+        <Typography variant="h4" sx={{ mb: 1.5 }}>
+          Afacerea a fost trimisă spre aprobare
+        </Typography>
+        <Typography sx={{ color: "text.secondary", mb: 4 }}>
+          Echipa Made in Vrancea îți va verifica datele în cel mai scurt timp.
+          Vei primi o notificare imediat ce profilul este aprobat și publicat pe
+          hartă.
+        </Typography>
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() => navigate("/cont")}
+        >
+          Mergi la panou
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ maxWidth: 760, mx: "auto" }}>
+      <Typography variant="h4" sx={{ mb: 0.5 }}>
+        Adaugă o afacere nouă
+      </Typography>
+      <Typography sx={{ color: "text.secondary", mb: 4 }}>
+        Completează cei 3 pași pentru a-ți publica profilul pe harta Vrancei.
+      </Typography>
+
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.5, md: 3.5 },
+          borderRadius: 4,
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        {activeStep === 0 && (
+          <Stack spacing={2.5}>
+            <TextField
+              label="Numele afacerii"
+              required
+              fullWidth
+              placeholder="ex. Crama Gîrboiu"
+            />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="CUI / CIF"
+                required
+                fullWidth
+                placeholder="ex. RO12345678"
+              />
+              <TextField
+                select
+                label="Categorie principală"
+                required
+                fullWidth
+                value={category}
+                onChange={(e) => setCategory(e.target.value as CategorySlug)}
+              >
+                {categoryOrder.map((slug) => (
+                  <MenuItem key={slug} value={slug}>
+                    {categoryMeta[slug].label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+            <TextField
+              label="Descriere scurtă"
+              fullWidth
+              multiline
+              minRows={4}
+              placeholder="Spune-le vizitatorilor ce te face special…"
+            />
+          </Stack>
+        )}
+
+        {activeStep === 1 && (
+          <Stack spacing={3}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Telefon"
+                required
+                fullWidth
+                placeholder="0237 000 000"
+              />
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                placeholder="contact@afacere.ro"
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField label="Website" fullWidth placeholder="https://" />
+              <TextField
+                label="Oraș / Localitate"
+                required
+                fullWidth
+                placeholder="ex. Focșani"
+              />
+            </Stack>
+            <TextField
+              label="Adresă"
+              required
+              fullWidth
+              placeholder="Stradă, număr"
+            />
+
+            <Box>
+              <Typography sx={{ fontWeight: 700, mb: 1.5 }}>
+                Program de funcționare
+              </Typography>
+              <Stack spacing={1}>
+                {DAY_NAMES_RO.map((day, i) => {
+                  const dayNum = i + 1;
+                  const closed = closedDays.includes(dayNum);
+                  return (
+                    <Stack
+                      key={day}
+                      direction="row"
+                      spacing={1.5}
+                      sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}
+                    >
+                      <Typography sx={{ width: 92, fontWeight: 600 }}>
+                        {day}
+                      </Typography>
+                      {closed ? (
+                        <Typography
+                          sx={{
+                            flexGrow: 1,
+                            color: "text.disabled",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Închis
+                        </Typography>
+                      ) : (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{ alignItems: "center", flexGrow: 1 }}
+                        >
+                          <TextField
+                            type="time"
+                            size="small"
+                            defaultValue="09:00"
+                            sx={{ width: 130 }}
+                          />
+                          <Typography sx={{ color: "text.secondary" }}>
+                            –
+                          </Typography>
+                          <TextField
+                            type="time"
+                            size="small"
+                            defaultValue="18:00"
+                            sx={{ width: 130 }}
+                          />
+                        </Stack>
+                      )}
+                      <Switch
+                        checked={!closed}
+                        onChange={() => toggleClosed(dayNum)}
+                      />
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+
+        {activeStep === 2 && (
+          <Stack spacing={3}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Box sx={{ flex: 1 }}>
+                <UploadZone label="Logo" />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <UploadZone label="Fotografie de copertă" />
+              </Box>
+            </Stack>
+            <Divider />
+            <Box>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: "center", mb: 1.5 }}
+              >
+                <PlaceRoundedIcon sx={{ color: "primary.main" }} />
+                <Typography sx={{ fontWeight: 700 }}>
+                  Plasează afacerea pe hartă
+                </Typography>
+              </Stack>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", mb: 1.5 }}
+              >
+                Apasă pe hartă sau trage pin-ul pentru a marca locația exactă.
+                Coordonate: <b>{coords}</b>
+              </Typography>
+              <Box
+                sx={{
+                  height: 320,
+                  borderRadius: 3,
+                  overflow: "hidden",
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <LocationPicker position={position} onChange={setPosition} />
+              </Box>
+            </Box>
+          </Stack>
+        )}
+
+        <Divider sx={{ my: 3 }} />
+        <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+          <Button
+            onClick={handleBack}
+            disabled={activeStep === 0}
+            startIcon={<ArrowBackRoundedIcon />}
+            sx={{ color: "text.secondary" }}
+          >
+            Înapoi
+          </Button>
+          <Button
+            onClick={handleNext}
+            variant="contained"
+            endIcon={!isLast ? <ArrowForwardRoundedIcon /> : undefined}
+          >
+            {isLast ? "Trimite spre aprobare" : "Continuă"}
+          </Button>
+        </Stack>
+      </Paper>
+    </Box>
+  );
+}
