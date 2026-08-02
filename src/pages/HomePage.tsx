@@ -12,12 +12,9 @@ import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import type { CategorySlug } from "../types";
 import { categoryOrder, categoryMeta } from "../data/categories";
-import {
-  activeBusinesses,
-  featuredBusinesses,
-  categoryList,
-  getBusinessBySlug,
-} from "../data/mockData";
+import { useAsync } from "../hooks/useAsync";
+import * as businessesApi from "../api/businesses";
+import { adaptBusiness } from "../api/adapters";
 import SearchBar from "../components/common/SearchBar";
 import SectionHeading from "../components/common/SectionHeading";
 import CategoryFilter from "../components/common/CategoryFilter";
@@ -30,20 +27,45 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CategorySlug[]>([]);
 
-  const heroImage = getBusinessBySlug("crama-girboiu")?.coverImage ?? "";
-  const cityCount = useMemo(
-    () => new Set(activeBusinesses.map((b) => b.location.city)).size,
+  const { data } = useAsync(
+    (signal) =>
+      businessesApi
+        .listActive({ limit: 100 }, signal)
+        .then((res) => res.data.map(adaptBusiness)),
     [],
   );
+  const businesses = useMemo(() => data ?? [], [data]);
+
+  const heroImage =
+    businesses.find((b) => b.slug === "crama-girboiu")?.coverImage ??
+    businesses[0]?.coverImage ??
+    "https://picsum.photos/seed/miv-hero/900/1100";
+
+  const cityCount = useMemo(
+    () => new Set(businesses.map((b) => b.location.city)).size,
+    [businesses],
+  );
+
+  const counts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const b of businesses) {
+      for (const slug of b.categorySlugs) {
+        map[slug] = (map[slug] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [businesses]);
+
+  const featured = useMemo(() => businesses.slice(0, 6), [businesses]);
 
   const mapBusinesses = useMemo(
     () =>
       selected.length === 0
-        ? activeBusinesses
-        : activeBusinesses.filter((b) =>
+        ? businesses
+        : businesses.filter((b) =>
             b.categorySlugs.some((c) => selected.includes(c)),
           ),
-    [selected],
+    [businesses, selected],
   );
 
   const toggle = (slug: CategorySlug) =>
@@ -55,7 +77,7 @@ export default function HomePage() {
     navigate(`/director?q=${encodeURIComponent(query.trim())}`);
 
   const stats = [
-    { value: `${activeBusinesses.length}+`, label: "Afaceri listate" },
+    { value: `${businesses.length}+`, label: "Afaceri listate" },
     { value: categoryOrder.length, label: "Categorii" },
     { value: cityCount, label: "Localități" },
   ];
@@ -292,14 +314,14 @@ export default function HomePage() {
               },
             }}
           >
-            {categoryList.map((cat) => {
-              const meta = categoryMeta[cat.slug];
+            {categoryOrder.map((slug) => {
+              const meta = categoryMeta[slug];
               const Icon = meta.icon;
               return (
                 <Box
-                  key={cat.slug}
+                  key={slug}
                   component={RouterLink}
-                  to={`/director?cat=${cat.slug}`}
+                  to={`/director?cat=${slug}`}
                   sx={{
                     p: 2.5,
                     borderRadius: 3,
@@ -338,7 +360,8 @@ export default function HomePage() {
                       variant="body2"
                       sx={{ color: "text.secondary" }}
                     >
-                      {cat.count} {cat.count === 1 ? "afacere" : "afaceri"}
+                      {counts[slug] ?? 0}{" "}
+                      {(counts[slug] ?? 0) === 1 ? "afacere" : "afaceri"}
                     </Typography>
                   </Box>
                 </Box>
@@ -376,7 +399,7 @@ export default function HomePage() {
               },
             }}
           >
-            {featuredBusinesses.map((b) => (
+            {featured.map((b) => (
               <BusinessCard key={b.businessId} business={b} />
             ))}
           </Box>

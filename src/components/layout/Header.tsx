@@ -16,7 +16,9 @@ import useScrollTrigger from "@mui/material/useScrollTrigger";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import Logo from "../common/Logo";
+import { useAuth } from "../../auth/authContext";
 
 const navItems = [
   { label: "Acasă", to: "/" },
@@ -27,6 +29,8 @@ const navItems = [
 export default function Header() {
   const [open, setOpen] = useState(false);
   const elevated = useScrollTrigger({ disableHysteresis: true, threshold: 8 });
+  const { user, logout } = useAuth();
+  const accountPath = user?.role === "Admin" ? "/admin" : "/cont";
 
   const navLinkSx = {
     color: "text.primary",
@@ -81,22 +85,44 @@ export default function Header() {
             spacing={1.25}
             sx={{ display: { xs: "none", md: "flex" }, ml: 2 }}
           >
-            <Button
-              component={RouterLink}
-              to="/autentificare"
-              variant="text"
-              sx={{ color: "text.primary" }}
-            >
-              Autentificare
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/inregistrare"
-              variant="contained"
-              startIcon={<StorefrontRoundedIcon />}
-            >
-              Adaugă afacerea
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  component={RouterLink}
+                  to={accountPath}
+                  variant="contained"
+                  startIcon={<DashboardRoundedIcon />}
+                >
+                  Contul meu
+                </Button>
+                <Button
+                  variant="text"
+                  sx={{ color: "text.primary" }}
+                  onClick={logout}
+                >
+                  Ieși
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  component={RouterLink}
+                  to="/autentificare"
+                  variant="text"
+                  sx={{ color: "text.primary" }}
+                >
+                  Autentificare
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to="/inregistrare"
+                  variant="contained"
+                  startIcon={<StorefrontRoundedIcon />}
+                >
+                  Adaugă afacerea
+                </Button>
+              </>
+            )}
           </Stack>
 
           <IconButton
@@ -160,25 +186,52 @@ export default function Header() {
           ))}
         </List>
         <Box sx={{ mt: "auto", p: 2, display: "grid", gap: 1.25 }}>
-          <Button
-            component={RouterLink}
-            to="/autentificare"
-            variant="outlined"
-            fullWidth
-            onClick={() => setOpen(false)}
-          >
-            Autentificare
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/inregistrare"
-            variant="contained"
-            fullWidth
-            startIcon={<StorefrontRoundedIcon />}
-            onClick={() => setOpen(false)}
-          >
-            Adaugă afacerea
-          </Button>
+          {user ? (
+            <>
+              <Button
+                component={RouterLink}
+                to={accountPath}
+                variant="contained"
+                fullWidth
+                startIcon={<DashboardRoundedIcon />}
+                onClick={() => setOpen(false)}
+              >
+                Contul meu
+              </Button>
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => {
+                  logout();
+                  setOpen(false);
+                }}
+              >
+                Ieși din cont
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                component={RouterLink}
+                to="/autentificare"
+                variant="outlined"
+                fullWidth
+                onClick={() => setOpen(false)}
+              >
+                Autentificare
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/inregistrare"
+                variant="contained"
+                fullWidth
+                startIcon={<StorefrontRoundedIcon />}
+                onClick={() => setOpen(false)}
+              >
+                Adaugă afacerea
+              </Button>
+            </>
+          )}
         </Box>
       </Drawer>
     </AppBar>

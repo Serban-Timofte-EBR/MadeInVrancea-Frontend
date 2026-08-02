@@ -24,8 +24,11 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import { getBusinessBySlug } from "../data/mockData";
-import { categoryMeta } from "../data/categories";
+import CircularProgress from "@mui/material/CircularProgress";
+import { getCategoryMeta } from "../data/categories";
+import { useAsync } from "../hooks/useAsync";
+import * as businessesApi from "../api/businesses";
+import { adaptBusiness } from "../api/adapters";
 import { DAY_NAMES_RO, currentDayOfWeek, formatHours } from "../lib/hours";
 import CategoryChip from "../components/common/CategoryChip";
 import OpenNowBadge from "../components/common/OpenNowBadge";
@@ -34,10 +37,25 @@ import MapView from "../components/map/MapView";
 
 export default function BusinessProfilePage() {
   const { slug } = useParams();
-  const business = slug ? getBusinessBySlug(slug) : undefined;
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const {
+    data: business,
+    loading,
+    error,
+  } = useAsync(
+    (signal) => businessesApi.getBySlug(slug ?? "", signal).then(adaptBusiness),
+    [slug],
+  );
 
-  if (!business) {
+  if (loading) {
+    return (
+      <Container sx={{ py: 12, display: "grid", placeItems: "center" }}>
+        <CircularProgress color="primary" />
+      </Container>
+    );
+  }
+
+  if (error || !business) {
     return (
       <Container sx={{ py: 12, textAlign: "center" }}>
         <Typography variant="h4" sx={{ mb: 1.5 }}>
@@ -103,8 +121,8 @@ export default function BusinessProfilePage() {
           height: { xs: 190, sm: 280, md: 340 },
           borderRadius: 4,
           overflow: "hidden",
-          background: `linear-gradient(135deg, ${alpha(categoryMeta[business.primaryCategory].color, 0.3)}, ${alpha(
-            categoryMeta[business.primaryCategory].color,
+          background: `linear-gradient(135deg, ${alpha(getCategoryMeta(business.primaryCategory).color, 0.3)}, ${alpha(
+            getCategoryMeta(business.primaryCategory).color,
             0.1,
           )})`,
         }}

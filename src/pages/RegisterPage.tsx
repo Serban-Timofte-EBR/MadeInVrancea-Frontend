@@ -13,16 +13,32 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import Alert from "@mui/material/Alert";
 import AuthLayout from "../components/layout/AuthLayout";
+import { useAuth } from "../auth/authContext";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [showPw, setShowPw] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Design boilerplate — no backend call. Continue to the onboarding wizard.
-    navigate("/cont/afacere-noua");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await register({ firstName, lastName, email, password });
+      navigate("/cont/afacere-noua", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Înregistrare eșuată.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -44,18 +60,27 @@ export default function RegisterPage() {
     >
       <Box component="form" onSubmit={handleSubmit}>
         <Stack spacing={2.25}>
+          {error && (
+            <Alert severity="error" sx={{ borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               label="Prenume"
               required
               fullWidth
               autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
             />
             <TextField
               label="Nume"
               required
               fullWidth
               autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
             />
           </Stack>
           <TextField
@@ -64,6 +89,8 @@ export default function RegisterPage() {
             required
             fullWidth
             autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <TextField
             label="Parolă"
@@ -72,6 +99,8 @@ export default function RegisterPage() {
             fullWidth
             autoComplete="new-password"
             helperText="Minim 8 caractere, cu litere și cifre."
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             slotProps={{
               input: {
                 endAdornment: (
@@ -104,8 +133,14 @@ export default function RegisterPage() {
               </Typography>
             }
           />
-          <Button type="submit" size="large" variant="contained" fullWidth>
-            Creează cont
+          <Button
+            type="submit"
+            size="large"
+            variant="contained"
+            fullWidth
+            disabled={submitting}
+          >
+            {submitting ? "Se creează contul…" : "Creează cont"}
           </Button>
         </Stack>
       </Box>

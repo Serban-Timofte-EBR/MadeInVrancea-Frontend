@@ -12,7 +12,7 @@ import LocalPharmacyIcon from "@mui/icons-material/LocalPharmacy";
 import type { CategorySlug } from "../types";
 
 export interface CategoryMeta {
-  slug: CategorySlug;
+  slug: string;
   label: string;
   shortLabel: string;
   icon: SvgIconComponent;
@@ -107,6 +107,15 @@ export const categoryOrder: CategorySlug[] = [
   "farmacii",
 ];
 
-export function getCategoryMeta(slug: CategorySlug): CategoryMeta {
-  return categoryMeta[slug];
+/** Neutral fallback for categories that are not part of the fixed set. */
+export const fallbackCategoryMeta: CategoryMeta = {
+  slug: "altele",
+  label: "Altele",
+  shortLabel: "Altele",
+  icon: StorefrontIcon,
+  color: "#8C7B6B",
+};
+
+export function getCategoryMeta(slug: string): CategoryMeta {
+  return categoryMeta[slug as CategorySlug] ?? fallbackCategoryMeta;
 }

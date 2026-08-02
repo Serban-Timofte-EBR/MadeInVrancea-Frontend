@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import MainLayout from "./components/layout/MainLayout";
 import DashboardLayout from "./components/layout/DashboardLayout";
+import ProtectedRoute from "./components/routing/ProtectedRoute";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const MapPage = lazy(() => import("./pages/MapPage"));
@@ -47,15 +48,19 @@ export default function App() {
         <Route path="/autentificare" element={<LoginPage />} />
         <Route path="/inregistrare" element={<RegisterPage />} />
 
-        <Route path="/cont" element={<DashboardLayout variant="merchant" />}>
-          <Route index element={<DashboardHomePage />} />
-          <Route path="afacere-noua" element={<OnboardingPage />} />
+        <Route element={<ProtectedRoute roles={["BusinessOwner", "Admin"]} />}>
+          <Route path="/cont" element={<DashboardLayout variant="merchant" />}>
+            <Route index element={<DashboardHomePage />} />
+            <Route path="afacere-noua" element={<OnboardingPage />} />
+          </Route>
         </Route>
 
-        <Route path="/admin" element={<DashboardLayout variant="admin" />}>
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="utilizatori" element={<AdminUsersPage />} />
-          <Route path="categorii" element={<AdminCategoriesPage />} />
+        <Route element={<ProtectedRoute roles={["Admin"]} />}>
+          <Route path="/admin" element={<DashboardLayout variant="admin" />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="utilizatori" element={<AdminUsersPage />} />
+            <Route path="categorii" element={<AdminCategoriesPage />} />
+          </Route>
         </Route>
       </Routes>
     </Suspense>

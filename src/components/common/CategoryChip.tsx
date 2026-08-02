@@ -1,7 +1,7 @@
 import Chip from "@mui/material/Chip";
 import { alpha } from "@mui/material/styles";
 import type { CategorySlug } from "../../types";
-import { categoryMeta } from "../../data/categories";
+import { getCategoryMeta } from "../../data/categories";
 
 interface CategoryChipProps {
   slug: CategorySlug;
@@ -18,7 +18,7 @@ export default function CategoryChip({
   useShortLabel = false,
   onClick,
 }: CategoryChipProps) {
-  const meta = categoryMeta[slug];
+  const meta = getCategoryMeta(slug);
   const Icon = meta.icon;
 
   const styles =

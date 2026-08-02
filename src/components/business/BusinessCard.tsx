@@ -8,7 +8,7 @@ import Rating from "@mui/material/Rating";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import type { Business } from "../../types";
-import { categoryMeta } from "../../data/categories";
+import { getCategoryMeta } from "../../data/categories";
 import SmartImage from "../common/SmartImage";
 import CategoryChip from "../common/CategoryChip";
 import OpenNowBadge from "../common/OpenNowBadge";
@@ -18,7 +18,7 @@ interface BusinessCardProps {
 }
 
 export default function BusinessCard({ business }: BusinessCardProps) {
-  const meta = categoryMeta[business.primaryCategory];
+  const meta = getCategoryMeta(business.primaryCategory);
 
   return (
     <Card

@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Link as RouterLink, NavLink, Outlet } from "react-router-dom";
+import {
+  Link as RouterLink,
+  NavLink,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
 import type { SvgIconComponent } from "@mui/icons-material";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -19,6 +24,7 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import Logo from "../common/Logo";
+import { useAuth } from "../../auth/authContext";
 
 type Variant = "merchant" | "admin";
 
@@ -64,10 +70,19 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const nav = variant === "admin" ? adminNav : merchantNav;
-  const user =
-    variant === "admin"
-      ? { name: "Andrei Ionescu", role: "Administrator" }
-      : { name: "Maria Popescu", role: "Comerciant" };
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.email ||
+    "Cont";
+  const roleLabel = user?.role === "Admin" ? "Administrator" : "Comerciant";
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <Box
@@ -145,19 +160,18 @@ function SidebarContent({
           sx={{ alignItems: "center", px: 0.5 }}
         >
           <Avatar sx={{ bgcolor: "primary.main", width: 40, height: 40 }}>
-            {user.name.charAt(0)}
+            {displayName.charAt(0)}
           </Avatar>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             <Typography sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-              {user.name}
+              {displayName}
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              {user.role}
+              {roleLabel}
             </Typography>
           </Box>
           <IconButton
-            component={RouterLink}
-            to="/"
+            onClick={handleLogout}
             aria-label="Deconectare"
             size="small"
           >

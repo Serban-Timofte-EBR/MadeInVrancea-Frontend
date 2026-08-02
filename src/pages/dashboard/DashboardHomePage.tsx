@@ -7,22 +7,22 @@ import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import { alpha } from "@mui/material/styles";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
-import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
-import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import AddBusinessRoundedIcon from "@mui/icons-material/AddBusinessRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import HourglassTopRoundedIcon from "@mui/icons-material/HourglassTopRounded";
-import { businesses } from "../../data/mockData";
-import { categoryMeta } from "../../data/categories";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import { getCategoryMeta } from "../../data/categories";
+import { useAsync } from "../../hooks/useAsync";
+import * as businessesApi from "../../api/businesses";
+import { adaptBusiness } from "../../api/adapters";
+import { useAuth } from "../../auth/authContext";
 import StatusBadge from "../../components/common/StatusBadge";
 import SmartImage from "../../components/common/SmartImage";
-
-const myBusinesses = businesses.filter(
-  (b) => b.businessId === "b-01" || b.businessId === "b-04",
-);
 
 interface Stat {
   icon: SvgIconComponent;
@@ -31,35 +31,48 @@ interface Stat {
   trend: string;
 }
 
-const stats: Stat[] = [
-  {
-    icon: VisibilityRoundedIcon,
-    value: "1.248",
-    label: "Vizualizări profil",
-    trend: "+12% luna aceasta",
-  },
-  {
-    icon: PhoneRoundedIcon,
-    value: "86",
-    label: "Apeluri primite",
-    trend: "+7% luna aceasta",
-  },
-  {
-    icon: TravelExploreRoundedIcon,
-    value: "3.4k",
-    label: "Afișări în căutări",
-    trend: "+18% luna aceasta",
-  },
-  {
-    icon: StarRoundedIcon,
-    value: "4.8",
-    label: "Rating mediu",
-    trend: "214 recenzii",
-  },
-];
-
 export default function DashboardHomePage() {
+  const { user } = useAuth();
+  const { data, loading, error } = useAsync(
+    (signal) =>
+      businessesApi.listMine(signal).then((list) => list.map(adaptBusiness)),
+    [],
+  );
+  const myBusinesses = data ?? [];
   const pending = myBusinesses.filter((b) => b.status === "Pending");
+  const activeCount = myBusinesses.filter((b) => b.status === "Active").length;
+  const rejectedCount = myBusinesses.filter(
+    (b) => b.status === "Rejected",
+  ).length;
+
+  const stats: Stat[] = [
+    {
+      icon: StorefrontRoundedIcon,
+      value: String(myBusinesses.length),
+      label: "Afaceri",
+      trend: "În contul tău",
+    },
+    {
+      icon: CheckCircleRoundedIcon,
+      value: String(activeCount),
+      label: "Active",
+      trend: "Publicate pe hartă",
+    },
+    {
+      icon: HourglassTopRoundedIcon,
+      value: String(pending.length),
+      label: "În așteptare",
+      trend: "La validare",
+    },
+    {
+      icon: BlockRoundedIcon,
+      value: String(rejectedCount),
+      label: "Respinse",
+      trend: "Necesită atenție",
+    },
+  ];
+
+  const greetingName = user?.firstName ? `, ${user.firstName}` : "";
 
   return (
     <Box>
@@ -74,7 +87,7 @@ export default function DashboardHomePage() {
       >
         <Box>
           <Typography variant="h4" sx={{ mb: 0.5 }}>
-            Bună, Maria
+            Bună{greetingName}
           </Typography>
           <Typography sx={{ color: "text.secondary" }}>
             Iată un rezumat al activității afacerilor tale.
@@ -187,96 +200,135 @@ export default function DashboardHomePage() {
       <Typography variant="h5" sx={{ mb: 2 }}>
         Afacerile mele
       </Typography>
-      <Stack spacing={2}>
-        {myBusinesses.map((b) => {
-          const meta = categoryMeta[b.primaryCategory];
-          return (
-            <Paper
-              key={b.businessId}
-              elevation={0}
-              sx={{
-                p: 2,
-                borderRadius: 4,
-                border: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                sx={{ alignItems: { sm: "center" } }}
+      {loading && (
+        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
+          <CircularProgress color="primary" />
+        </Box>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ borderRadius: 3 }}>
+          {error}
+        </Alert>
+      )}
+      {!loading && !error && myBusinesses.length === 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 5,
+            borderRadius: 4,
+            border: "1px dashed",
+            borderColor: "divider",
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 0.5 }}>
+            Nicio afacere încă
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2.5 }}>
+            Adaugă prima ta afacere pentru a apărea pe harta Vrancei.
+          </Typography>
+          <Button
+            component={RouterLink}
+            to="/cont/afacere-noua"
+            variant="contained"
+            startIcon={<AddBusinessRoundedIcon />}
+          >
+            Adaugă afacere
+          </Button>
+        </Paper>
+      )}
+      {!loading && !error && myBusinesses.length > 0 && (
+        <Stack spacing={2}>
+          {myBusinesses.map((b) => {
+            const meta = getCategoryMeta(b.primaryCategory);
+            return (
+              <Paper
+                key={b.businessId}
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 4,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
               >
-                <Box sx={{ width: { xs: "100%", sm: 96 }, flexShrink: 0 }}>
-                  <SmartImage
-                    src={b.coverImage}
-                    alt={b.name}
-                    ratio={16 / 10}
-                    radius={12}
-                    category={b.primaryCategory}
-                  />
-                </Box>
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      alignItems: "center",
-                      mb: 0.5,
-                      flexWrap: "wrap",
-                      gap: 1,
-                    }}
-                  >
-                    <Typography variant="h6" sx={{ fontSize: "1.1rem" }}>
-                      {b.name}
-                    </Typography>
-                    <StatusBadge status={b.status} />
-                  </Stack>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: meta.color, fontWeight: 600 }}
-                  >
-                    {meta.label}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "text.secondary", mt: 0.5 }}
-                  >
-                    {b.location.city}
-                  </Typography>
-                </Box>
-                <Divider
-                  orientation="vertical"
-                  flexItem
-                  sx={{ display: { xs: "none", sm: "block" } }}
-                />
                 <Stack
-                  direction={{ xs: "row", sm: "column" }}
-                  spacing={1}
-                  sx={{ flexShrink: 0 }}
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={2}
+                  sx={{ alignItems: { sm: "center" } }}
                 >
-                  <Button
-                    variant="outlined"
-                    startIcon={<EditRoundedIcon />}
-                    sx={{ borderColor: "divider", color: "text.primary" }}
-                  >
-                    Editează
-                  </Button>
-                  {b.status === "Active" && (
-                    <Button
-                      component={RouterLink}
-                      to={`/afaceri/${b.slug}`}
-                      variant="text"
-                      startIcon={<OpenInNewRoundedIcon />}
+                  <Box sx={{ width: { xs: "100%", sm: 96 }, flexShrink: 0 }}>
+                    <SmartImage
+                      src={b.coverImage}
+                      alt={b.name}
+                      ratio={16 / 10}
+                      radius={12}
+                      category={b.primaryCategory}
+                    />
+                  </Box>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{
+                        alignItems: "center",
+                        mb: 0.5,
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
-                      Vezi profilul
+                      <Typography variant="h6" sx={{ fontSize: "1.1rem" }}>
+                        {b.name}
+                      </Typography>
+                      <StatusBadge status={b.status} />
+                    </Stack>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: meta.color, fontWeight: 600 }}
+                    >
+                      {meta.label}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", mt: 0.5 }}
+                    >
+                      {b.location.city}
+                    </Typography>
+                  </Box>
+                  <Divider
+                    orientation="vertical"
+                    flexItem
+                    sx={{ display: { xs: "none", sm: "block" } }}
+                  />
+                  <Stack
+                    direction={{ xs: "row", sm: "column" }}
+                    spacing={1}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<EditRoundedIcon />}
+                      sx={{ borderColor: "divider", color: "text.primary" }}
+                    >
+                      Editează
                     </Button>
-                  )}
+                    {b.status === "Active" && (
+                      <Button
+                        component={RouterLink}
+                        to={`/afaceri/${b.slug}`}
+                        variant="text"
+                        startIcon={<OpenInNewRoundedIcon />}
+                      >
+                        Vezi profilul
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
-              </Stack>
-            </Paper>
-          );
-        })}
-      </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
     </Box>
   );
 }

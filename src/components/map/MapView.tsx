@@ -11,7 +11,7 @@ import Typography from "@mui/material/Typography";
 import DirectionsRoundedIcon from "@mui/icons-material/DirectionsRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import type { Business, CategorySlug } from "../../types";
-import { categoryMeta } from "../../data/categories";
+import { getCategoryMeta } from "../../data/categories";
 import SmartImage from "../common/SmartImage";
 import CategoryChip from "../common/CategoryChip";
 
@@ -23,7 +23,7 @@ const iconCache = new Map<CategorySlug, L.DivIcon>();
 function getPinIcon(slug: CategorySlug): L.DivIcon {
   const cached = iconCache.get(slug);
   if (cached) return cached;
-  const meta = categoryMeta[slug];
+  const meta = getCategoryMeta(slug);
   const Icon = meta.icon;
   const svg = renderToStaticMarkup(<Icon />);
   const icon = L.divIcon({

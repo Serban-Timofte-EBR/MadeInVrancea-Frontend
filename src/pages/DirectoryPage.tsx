@@ -9,9 +9,13 @@ import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import { alpha } from "@mui/material/styles";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
 import type { CategorySlug } from "../types";
-import { categoryOrder, categoryMeta } from "../data/categories";
-import { activeBusinesses } from "../data/mockData";
+import { categoryOrder, getCategoryMeta } from "../data/categories";
+import { useAsync } from "../hooks/useAsync";
+import * as businessesApi from "../api/businesses";
+import { adaptBusiness } from "../api/adapters";
 import SearchBar from "../components/common/SearchBar";
 import CategoryFilter from "../components/common/CategoryFilter";
 import BusinessCard from "../components/business/BusinessCard";
@@ -31,13 +35,32 @@ export default function DirectoryPage() {
   });
   const [sort, setSort] = useState<SortKey>("recomandate");
 
+  const { data, loading, error } = useAsync(
+    (signal) =>
+      businessesApi
+        .listActive({ limit: 100 }, signal)
+        .then((res) => res.data.map(adaptBusiness)),
+    [],
+  );
+  const businesses = useMemo(() => data ?? [], [data]);
+
+  const counts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const b of businesses) {
+      for (const slug of b.categorySlugs) {
+        map[slug] = (map[slug] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [businesses]);
+
   const toggle = (slug: CategorySlug) =>
     setSelected((prev) =>
       prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
     );
 
   const results = useMemo(() => {
-    let list = activeBusinesses;
+    let list = businesses;
     if (selected.length) {
       list = list.filter((b) =>
         b.categorySlugs.some((c) => selected.includes(c)),
@@ -51,7 +74,7 @@ export default function DirectoryPage() {
           b.location.city.toLowerCase().includes(q) ||
           b.shortDescription.toLowerCase().includes(q) ||
           b.categorySlugs.some((c) =>
-            categoryMeta[c].label.toLowerCase().includes(q),
+            getCategoryMeta(c).label.toLowerCase().includes(q),
           ),
       );
     }
@@ -61,7 +84,7 @@ export default function DirectoryPage() {
       sorted.sort((a, b) => a.name.localeCompare(b.name, "ro"));
     else sorted.sort((a, b) => Number(b.featured) - Number(a.featured));
     return sorted;
-  }, [query, selected, sort]);
+  }, [businesses, query, selected, sort]);
 
   const reset = () => {
     setQuery("");
@@ -104,6 +127,7 @@ export default function DirectoryPage() {
             onToggle={toggle}
             onClear={() => setSelected([])}
             showCounts
+            counts={counts}
           />
         </Box>
 
@@ -119,7 +143,9 @@ export default function DirectoryPage() {
           }}
         >
           <Typography sx={{ fontWeight: 700 }}>
-            {results.length} {results.length === 1 ? "rezultat" : "rezultate"}
+            {loading
+              ? "Se încarcă…"
+              : `${results.length} ${results.length === 1 ? "rezultat" : "rezultate"}`}
           </Typography>
           <TextField
             select
@@ -135,7 +161,15 @@ export default function DirectoryPage() {
           </TextField>
         </Stack>
 
-        {results.length > 0 ? (
+        {loading ? (
+          <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ borderRadius: 3 }}>
+            {error}
+          </Alert>
+        ) : results.length > 0 ? (
           <Box
             sx={{
               display: "grid",

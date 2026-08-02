@@ -21,9 +21,12 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
-import type { CategorySlug } from "../../types";
-import { categoryOrder, categoryMeta } from "../../data/categories";
+import Alert from "@mui/material/Alert";
 import { DAY_NAMES_RO } from "../../lib/hours";
+import { useAsync } from "../../hooks/useAsync";
+import * as businessesApi from "../../api/businesses";
+import * as categoriesApi from "../../api/categories";
+import type { OperatingHourInput } from "../../api/types";
 
 const steps = ["Date firmă", "Contact & Program", "Poze & Locație"];
 const FOCSANI: [number, number] = [45.6966, 27.1863];
@@ -113,9 +116,25 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  const [category, setCategory] = useState<CategorySlug | "">("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
   const [position, setPosition] = useState<[number, number]>(FOCSANI);
   const [closedDays, setClosedDays] = useState<number[]>([7]);
+
+  const { data: categories } = useAsync(
+    (signal) => categoriesApi.list(signal),
+    [],
+  );
 
   const toggleClosed = (day: number) =>
     setClosedDays((prev) =>
@@ -123,8 +142,54 @@ export default function OnboardingPage() {
     );
 
   const isLast = activeStep === steps.length - 1;
-  const handleNext = () =>
-    isLast ? setSubmitted(true) : setActiveStep((s) => s + 1);
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError(null);
+    const operatingHours: OperatingHourInput[] = DAY_NAMES_RO.map((_, i) => {
+      const dayOfWeek = i + 1;
+      const closed = closedDays.includes(dayOfWeek);
+      return {
+        dayOfWeek,
+        openTime: closed ? null : "09:00",
+        closeTime: closed ? null : "18:00",
+        isClosed: closed,
+      };
+    });
+    try {
+      await businessesApi.create({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        taxId: taxId.trim() || undefined,
+        contactPhone: phone.trim() || undefined,
+        contactEmail: email.trim() || undefined,
+        websiteURL: website.trim() || undefined,
+        categoryIds: category ? [category] : [],
+        location: {
+          address: address.trim(),
+          city: city.trim(),
+          latitude: position[0],
+          longitude: position[1],
+          isPrimary: true,
+          operatingHours,
+        },
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Trimiterea a eșuat.");
+      setActiveStep(0);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (isLast) {
+      void submit();
+    } else {
+      setActiveStep((s) => s + 1);
+    }
+  };
   const handleBack = () => setActiveStep((s) => Math.max(0, s - 1));
 
   const coords = useMemo(
@@ -204,18 +269,26 @@ export default function OnboardingPage() {
       >
         {activeStep === 0 && (
           <Stack spacing={2.5}>
+            {error && (
+              <Alert severity="error" sx={{ borderRadius: 2 }}>
+                {error}
+              </Alert>
+            )}
             <TextField
               label="Numele afacerii"
               required
               fullWidth
               placeholder="ex. Crama Gîrboiu"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label="CUI / CIF"
-                required
                 fullWidth
                 placeholder="ex. RO12345678"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
               />
               <TextField
                 select
@@ -223,11 +296,11 @@ export default function OnboardingPage() {
                 required
                 fullWidth
                 value={category}
-                onChange={(e) => setCategory(e.target.value as CategorySlug)}
+                onChange={(e) => setCategory(e.target.value)}
               >
-                {categoryOrder.map((slug) => (
-                  <MenuItem key={slug} value={slug}>
-                    {categoryMeta[slug].label}
+                {(categories ?? []).map((c) => (
+                  <MenuItem key={c.categoryId} value={c.categoryId}>
+                    {c.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -238,6 +311,8 @@ export default function OnboardingPage() {
               multiline
               minRows={4}
               placeholder="Spune-le vizitatorilor ce te face special…"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </Stack>
         )}
@@ -247,24 +322,35 @@ export default function OnboardingPage() {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label="Telefon"
-                required
                 fullWidth
                 placeholder="0237 000 000"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
               <TextField
                 label="Email"
                 type="email"
                 fullWidth
                 placeholder="contact@afacere.ro"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField label="Website" fullWidth placeholder="https://" />
+              <TextField
+                label="Website"
+                fullWidth
+                placeholder="https://"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
               <TextField
                 label="Oraș / Localitate"
                 required
                 fullWidth
                 placeholder="ex. Focșani"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               />
             </Stack>
             <TextField
@@ -272,6 +358,8 @@ export default function OnboardingPage() {
               required
               fullWidth
               placeholder="Stradă, număr"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
             />
 
             <Box>
@@ -394,9 +482,14 @@ export default function OnboardingPage() {
           <Button
             onClick={handleNext}
             variant="contained"
+            disabled={submitting || (isLast && (!name.trim() || !category))}
             endIcon={!isLast ? <ArrowForwardRoundedIcon /> : undefined}
           >
-            {isLast ? "Trimite spre aprobare" : "Continuă"}
+            {isLast
+              ? submitting
+                ? "Se trimite…"
+                : "Trimite spre aprobare"
+              : "Continuă"}
           </Button>
         </Stack>
       </Paper>

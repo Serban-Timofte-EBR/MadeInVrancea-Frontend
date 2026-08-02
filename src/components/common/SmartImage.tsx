@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import { alpha } from "@mui/material/styles";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { CategorySlug } from "../../types";
-import { categoryMeta } from "../../data/categories";
+import { getCategoryMeta } from "../../data/categories";
 
 interface SmartImageProps {
   src: string;
@@ -31,7 +31,7 @@ export default function SmartImage({
   sx,
 }: SmartImageProps) {
   const [loaded, setLoaded] = useState(false);
-  const tint = category ? categoryMeta[category].color : "#8C2F39";
+  const tint = category ? getCategoryMeta(category).color : "#8C2F39";
 
   return (
     <Box

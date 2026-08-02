@@ -19,13 +19,18 @@ import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import InventoryRoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
 import type { Business } from "../../types";
-import {
-  pendingBusinesses,
-  activeBusinesses,
-  businesses,
-} from "../../data/mockData";
-import { categoryOrder } from "../../data/categories";
+import { useAsync } from "../../hooks/useAsync";
+import * as businessesApi from "../../api/businesses";
+import * as categoriesApi from "../../api/categories";
+import * as usersApi from "../../api/users";
+import { adaptBusiness } from "../../api/adapters";
 import CategoryChip from "../../components/common/CategoryChip";
 import SmartImage from "../../components/common/SmartImage";
 
@@ -45,11 +50,30 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminDashboardPage() {
-  const [queue, setQueue] = useState<Business[]>(pendingBusinesses);
+  const { data, loading, error, reload } = useAsync(async (signal) => {
+    const [pending, active, cats, allUsers] = await Promise.all([
+      businessesApi.listPending(signal),
+      businessesApi.listActive({ limit: 1 }, signal),
+      categoriesApi.list(signal),
+      usersApi.list(signal),
+    ]);
+    return {
+      pending: pending.map(adaptBusiness),
+      activeCount: active.total,
+      categoryCount: cats.length,
+      userCount: allUsers.length,
+    };
+  }, []);
+
+  const queue = data?.pending ?? [];
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Business | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [toast, setToast] = useState<{
     open: boolean;
     message: string;
-    severity: "success" | "info";
+    severity: "success" | "info" | "error";
   }>({
     open: false,
     message: "",
@@ -65,35 +89,73 @@ export default function AdminDashboardPage() {
     },
     {
       icon: StorefrontRoundedIcon,
-      value: activeBusinesses.length,
+      value: data?.activeCount ?? 0,
       label: "Afaceri active",
       color: "#3B7A57",
     },
     {
       icon: PeopleRoundedIcon,
-      value: 128,
+      value: data?.userCount ?? 0,
       label: "Utilizatori",
       color: "#3A6EA5",
     },
     {
       icon: CategoryRoundedIcon,
-      value: categoryOrder.length,
+      value: data?.categoryCount ?? 0,
       label: "Categorii",
       color: "#6B4EA0",
     },
   ];
 
-  const handleAction = (id: string, action: "approve" | "reject") => {
-    const target = queue.find((b) => b.businessId === id);
-    setQueue((prev) => prev.filter((b) => b.businessId !== id));
-    setToast({
-      open: true,
-      message:
-        action === "approve"
-          ? `„${target?.name}” a fost aprobată și publicată.`
-          : `„${target?.name}” a fost respinsă.`,
-      severity: action === "approve" ? "success" : "info",
-    });
+  const approve = async (b: Business) => {
+    setBusyId(b.businessId);
+    try {
+      await businessesApi.approve(b.businessId);
+      setToast({
+        open: true,
+        message: `„${b.name}” a fost aprobată și publicată.`,
+        severity: "success",
+      });
+      reload();
+    } catch (err) {
+      setToast({
+        open: true,
+        message: err instanceof Error ? err.message : "A apărut o eroare.",
+        severity: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) {
+      return;
+    }
+    const b = rejectTarget;
+    setBusyId(b.businessId);
+    try {
+      await businessesApi.reject(
+        b.businessId,
+        rejectReason.trim() || "Date incomplete sau neconforme.",
+      );
+      setToast({
+        open: true,
+        message: `„${b.name}” a fost respinsă.`,
+        severity: "info",
+      });
+      setRejectTarget(null);
+      setRejectReason("");
+      reload();
+    } catch (err) {
+      setToast({
+        open: true,
+        message: err instanceof Error ? err.message : "A apărut o eroare.",
+        severity: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -166,7 +228,15 @@ export default function AdminDashboardPage() {
         Coadă de așteptare
       </Typography>
 
-      {queue.length === 0 ? (
+      {loading && !data ? (
+        <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
+          <CircularProgress color="primary" />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ borderRadius: 3 }}>
+          {error}
+        </Alert>
+      ) : queue.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
@@ -285,7 +355,8 @@ export default function AdminDashboardPage() {
                     variant="contained"
                     color="success"
                     startIcon={<CheckRoundedIcon />}
-                    onClick={() => handleAction(b.businessId, "approve")}
+                    onClick={() => approve(b)}
+                    disabled={busyId === b.businessId}
                     sx={{ color: "#fff" }}
                   >
                     Aprobă
@@ -294,7 +365,8 @@ export default function AdminDashboardPage() {
                     variant="outlined"
                     color="error"
                     startIcon={<CloseRoundedIcon />}
-                    onClick={() => handleAction(b.businessId, "reject")}
+                    onClick={() => setRejectTarget(b)}
+                    disabled={busyId === b.businessId}
                   >
                     Respinge
                   </Button>
@@ -309,8 +381,48 @@ export default function AdminDashboardPage() {
         variant="caption"
         sx={{ color: "text.disabled", display: "block", mt: 3 }}
       >
-        {businesses.length} afaceri în total în platformă.
+        {data?.activeCount ?? 0} afaceri active în platformă.
       </Typography>
+
+      <Dialog
+        open={Boolean(rejectTarget)}
+        onClose={() => setRejectTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Respinge afacerea</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+            Motivul respingerii va fi comunicat comerciantului „
+            {rejectTarget?.name}”.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={2}
+            label="Motiv"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => setRejectTarget(null)}
+            sx={{ color: "text.secondary" }}
+          >
+            Anulează
+          </Button>
+          <Button
+            onClick={confirmReject}
+            variant="contained"
+            color="error"
+            disabled={busyId === rejectTarget?.businessId}
+          >
+            Respinge
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={toast.open}

@@ -3,7 +3,6 @@ import Chip from "@mui/material/Chip";
 import { alpha } from "@mui/material/styles";
 import type { CategorySlug } from "../../types";
 import { categoryOrder, categoryMeta } from "../../data/categories";
-import { categoryList } from "../../data/mockData";
 
 interface CategoryFilterProps {
   selected: CategorySlug[];
@@ -11,6 +10,7 @@ interface CategoryFilterProps {
   onClear: () => void;
   direction?: "row" | "column";
   showCounts?: boolean;
+  counts?: Record<string, number>;
 }
 
 export default function CategoryFilter({
@@ -19,9 +19,8 @@ export default function CategoryFilter({
   onClear,
   direction = "row",
   showCounts = false,
+  counts = {},
 }: CategoryFilterProps) {
-  const counts = Object.fromEntries(categoryList.map((c) => [c.slug, c.count]));
-
   return (
     <Box
       sx={{

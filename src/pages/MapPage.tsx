@@ -7,23 +7,36 @@ import Divider from "@mui/material/Divider";
 import { alpha } from "@mui/material/styles";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
 import type { CategorySlug } from "../types";
-import { categoryMeta } from "../data/categories";
-import { activeBusinesses } from "../data/mockData";
+import { getCategoryMeta } from "../data/categories";
+import { useAsync } from "../hooks/useAsync";
+import * as businessesApi from "../api/businesses";
+import { adaptBusiness } from "../api/adapters";
 import CategoryFilter from "../components/common/CategoryFilter";
 import MapView from "../components/map/MapView";
 
 export default function MapPage() {
   const [selected, setSelected] = useState<CategorySlug[]>([]);
 
+  const { data, loading, error } = useAsync(
+    (signal) =>
+      businessesApi
+        .listActive({ limit: 100 }, signal)
+        .then((res) => res.data.map(adaptBusiness)),
+    [],
+  );
+  const businesses = useMemo(() => data ?? [], [data]);
+
   const filtered = useMemo(
     () =>
       selected.length === 0
-        ? activeBusinesses
-        : activeBusinesses.filter((b) =>
+        ? businesses
+        : businesses.filter((b) =>
             b.categorySlugs.some((c) => selected.includes(c)),
           ),
-    [selected],
+    [businesses, selected],
   );
 
   const toggle = (slug: CategorySlug) =>
@@ -56,8 +69,9 @@ export default function MapPage() {
             Harta Vrancei
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-            {filtered.length} {filtered.length === 1 ? "afacere" : "afaceri"} pe
-            hartă
+            {loading
+              ? "Se încarcă…"
+              : `${filtered.length} ${filtered.length === 1 ? "afacere" : "afaceri"} pe hartă`}
           </Typography>
           <CategoryFilter
             selected={selected}
@@ -70,7 +84,7 @@ export default function MapPage() {
         <Box sx={{ flexGrow: 1, overflowY: "auto", p: 1.5 }}>
           <Stack spacing={1}>
             {filtered.map((b) => {
-              const meta = categoryMeta[b.primaryCategory];
+              const meta = getCategoryMeta(b.primaryCategory);
               return (
                 <Box
                   key={b.businessId}
@@ -157,7 +171,36 @@ export default function MapPage() {
       <Box
         sx={{ flexGrow: 1, position: "relative", bgcolor: alpha("#000", 0.02) }}
       >
-        <MapView businesses={filtered} height="100%" />
+        {error ? (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              p: 3,
+              zIndex: 500,
+            }}
+          >
+            <Alert severity="error" sx={{ borderRadius: 3 }}>
+              {error}
+            </Alert>
+          </Box>
+        ) : loading ? (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              zIndex: 500,
+            }}
+          >
+            <CircularProgress color="primary" />
+          </Box>
+        ) : (
+          <MapView businesses={filtered} height="100%" />
+        )}
       </Box>
     </Box>
   );
