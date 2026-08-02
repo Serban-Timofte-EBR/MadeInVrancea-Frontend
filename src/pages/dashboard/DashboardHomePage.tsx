@@ -306,6 +306,8 @@ export default function DashboardHomePage() {
                     sx={{ flexShrink: 0 }}
                   >
                     <Button
+                      component={RouterLink}
+                      to={`/cont/afaceri/${b.businessId}/editare`}
                       variant="outlined"
                       startIcon={<EditRoundedIcon />}
                       sx={{ borderColor: "divider", color: "text.primary" }}

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { SvgIconComponent } from "@mui/icons-material";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -8,11 +7,6 @@ import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
-import { alpha } from "@mui/material/styles";
-import HourglassTopRoundedIcon from "@mui/icons-material/HourglassTopRounded";
-import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
-import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
-import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
@@ -28,18 +22,9 @@ import TextField from "@mui/material/TextField";
 import type { Business } from "../../types";
 import { useAsync } from "../../hooks/useAsync";
 import * as businessesApi from "../../api/businesses";
-import * as categoriesApi from "../../api/categories";
-import * as usersApi from "../../api/users";
 import { adaptBusiness } from "../../api/adapters";
 import CategoryChip from "../../components/common/CategoryChip";
 import SmartImage from "../../components/common/SmartImage";
-
-interface Stat {
-  icon: SvgIconComponent;
-  value: number;
-  label: string;
-  color: string;
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ro-RO", {
@@ -50,22 +35,18 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminDashboardPage() {
-  const { data, loading, error, reload } = useAsync(async (signal) => {
-    const [pending, active, cats, allUsers] = await Promise.all([
-      businessesApi.listPending(signal),
-      businessesApi.listActive({ limit: 1 }, signal),
-      categoriesApi.list(signal),
-      usersApi.list(signal),
-    ]);
-    return {
-      pending: pending.map(adaptBusiness),
-      activeCount: active.total,
-      categoryCount: cats.length,
-      userCount: allUsers.length,
-    };
-  }, []);
+  const {
+    data: pending,
+    loading: pendingLoading,
+    error: pendingError,
+    reload: reloadPending,
+  } = useAsync(
+    async (signal) =>
+      (await businessesApi.listPending(signal)).map(adaptBusiness),
+    [],
+  );
 
-  const queue = data?.pending ?? [];
+  const queue = pending ?? [];
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Business | null>(null);
@@ -80,33 +61,6 @@ export default function AdminDashboardPage() {
     severity: "success",
   });
 
-  const stats: Stat[] = [
-    {
-      icon: HourglassTopRoundedIcon,
-      value: queue.length,
-      label: "În așteptare",
-      color: "#C7853A",
-    },
-    {
-      icon: StorefrontRoundedIcon,
-      value: data?.activeCount ?? 0,
-      label: "Afaceri active",
-      color: "#3B7A57",
-    },
-    {
-      icon: PeopleRoundedIcon,
-      value: data?.userCount ?? 0,
-      label: "Utilizatori",
-      color: "#3A6EA5",
-    },
-    {
-      icon: CategoryRoundedIcon,
-      value: data?.categoryCount ?? 0,
-      label: "Categorii",
-      color: "#6B4EA0",
-    },
-  ];
-
   const approve = async (b: Business) => {
     setBusyId(b.businessId);
     try {
@@ -116,7 +70,7 @@ export default function AdminDashboardPage() {
         message: `„${b.name}” a fost aprobată și publicată.`,
         severity: "success",
       });
-      reload();
+      reloadPending();
     } catch (err) {
       setToast({
         open: true,
@@ -146,7 +100,7 @@ export default function AdminDashboardPage() {
       });
       setRejectTarget(null);
       setRejectReason("");
-      reload();
+      reloadPending();
     } catch (err) {
       setToast({
         open: true,
@@ -161,80 +115,23 @@ export default function AdminDashboardPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 0.5 }}>
-        Validare afaceri
+        Cereri onboarding
       </Typography>
       <Typography sx={{ color: "text.secondary", mb: 4 }}>
         Verifică și aprobă afacerile noi înainte de publicarea pe hartă.
       </Typography>
 
-      {/* Stats */}
-      <Box
-        sx={{
-          display: "grid",
-          gap: 2.5,
-          gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
-          mb: 4,
-        }}
-      >
-        {stats.map((s) => (
-          <Paper
-            key={s.label}
-            elevation={0}
-            sx={{
-              p: 2.5,
-              borderRadius: 4,
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <Stack direction="row" spacing={1.75} sx={{ alignItems: "center" }}>
-              <Box
-                sx={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 2.5,
-                  display: "grid",
-                  placeItems: "center",
-                  color: s.color,
-                  bgcolor: alpha(s.color, 0.14),
-                }}
-              >
-                <s.icon />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontFamily: "'Manrope', sans-serif",
-                    fontWeight: 800,
-                    lineHeight: 1,
-                  }}
-                >
-                  {s.value}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "text.secondary", fontWeight: 600 }}
-                >
-                  {s.label}
-                </Typography>
-              </Box>
-            </Stack>
-          </Paper>
-        ))}
-      </Box>
-
       <Typography variant="h5" sx={{ mb: 2 }}>
-        Coadă de așteptare
+        Cereri în așteptare
       </Typography>
 
-      {loading && !data ? (
+      {pendingLoading && !pending ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
           <CircularProgress color="primary" />
         </Box>
-      ) : error ? (
+      ) : pendingError ? (
         <Alert severity="error" sx={{ borderRadius: 3 }}>
-          {error}
+          {pendingError}
         </Alert>
       ) : queue.length === 0 ? (
         <Paper
@@ -376,13 +273,6 @@ export default function AdminDashboardPage() {
           ))}
         </Stack>
       )}
-
-      <Typography
-        variant="caption"
-        sx={{ color: "text.disabled", display: "block", mt: 3 }}
-      >
-        {data?.activeCount ?? 0} afaceri active în platformă.
-      </Typography>
 
       <Dialog
         open={Boolean(rejectTarget)}

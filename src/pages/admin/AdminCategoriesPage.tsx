@@ -152,7 +152,7 @@ export default function AdminCategoriesPage() {
           </Typography>
           <Typography sx={{ color: "text.secondary" }}>
             Adaugă, editează sau elimină categoriile afișate pe hartă și în
-            director.
+            lista afacerilor locale.
           </Typography>
         </Box>
         <Button

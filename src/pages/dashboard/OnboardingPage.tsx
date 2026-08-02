@@ -26,7 +26,10 @@ import { DAY_NAMES_RO } from "../../lib/hours";
 import { useAsync } from "../../hooks/useAsync";
 import * as businessesApi from "../../api/businesses";
 import * as categoriesApi from "../../api/categories";
+import * as mediaApi from "../../api/media";
 import type { OperatingHourInput } from "../../api/types";
+import type { MediaType } from "../../types";
+import { useAuth } from "../../auth/authContext";
 
 const steps = ["Date firmă", "Contact & Program", "Poze & Locație"];
 const FOCSANI: [number, number] = [45.6966, 27.1863];
@@ -84,9 +87,30 @@ function LocationPicker({
   );
 }
 
-function UploadZone({ label }: { label: string }) {
+function UploadZone({
+  label,
+  file,
+  mediaType,
+  onChange,
+}: {
+  label: string;
+  file: File | null;
+  mediaType: MediaType;
+  onChange: (file: File) => void;
+}) {
+  const chooseFile = (files: FileList | null) => {
+    const selected = files?.[0];
+    if (selected?.type.startsWith("image/")) onChange(selected);
+  };
+
   return (
     <Box
+      component="label"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        chooseFile(event.dataTransfer.files);
+      }}
       sx={{
         border: "2px dashed",
         borderColor: "divider",
@@ -106,18 +130,31 @@ function UploadZone({ label }: { label: string }) {
       />
       <Typography sx={{ fontWeight: 700 }}>{label}</Typography>
       <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        Trage o imagine aici sau apasă pentru a încărca
+        {file?.name ?? "Trage o imagine aici sau apasă pentru a încărca"}
       </Typography>
+      <input
+        hidden
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label={`Încarcă ${label.toLowerCase()}`}
+        onChange={(event) => chooseFile(event.target.files)}
+        data-media-type={mediaType}
+      />
     </Box>
   );
 }
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "Admin";
   const [activeStep, setActiveStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submissionWarning, setSubmissionWarning] = useState<string | null>(
+    null,
+  );
 
   const [name, setName] = useState("");
   const [taxId, setTaxId] = useState("");
@@ -130,6 +167,8 @@ export default function OnboardingPage() {
   const [address, setAddress] = useState("");
   const [position, setPosition] = useState<[number, number]>(FOCSANI);
   const [closedDays, setClosedDays] = useState<number[]>([7]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   const { data: categories } = useAsync(
     (signal) => categoriesApi.list(signal),
@@ -157,7 +196,7 @@ export default function OnboardingPage() {
       };
     });
     try {
-      await businessesApi.create({
+      const business = await businessesApi.create({
         name: name.trim(),
         description: description.trim() || undefined,
         taxId: taxId.trim() || undefined,
@@ -174,6 +213,22 @@ export default function OnboardingPage() {
           operatingHours,
         },
       });
+      const uploads: ReturnType<typeof mediaApi.upload>[] = [];
+      if (logoFile) {
+        uploads.push(mediaApi.upload(business.businessId, logoFile, "Logo"));
+      }
+      if (coverFile) {
+        uploads.push(mediaApi.upload(business.businessId, coverFile, "Cover"));
+      }
+      try {
+        await Promise.all(uploads);
+      } catch (uploadError) {
+        setSubmissionWarning(
+          uploadError instanceof Error
+            ? `Afacerea a fost creată, dar imaginile nu au putut fi încărcate: ${uploadError.message}`
+            : "Afacerea a fost creată, dar imaginile nu au putut fi încărcate.",
+        );
+      }
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Trimiterea a eșuat.");
@@ -223,17 +278,24 @@ export default function OnboardingPage() {
           <CheckCircleRoundedIcon sx={{ fontSize: 46 }} />
         </Box>
         <Typography variant="h4" sx={{ mb: 1.5 }}>
-          Afacerea a fost trimisă spre aprobare
+          {isAdmin
+            ? "Afacerea a fost publicată"
+            : "Afacerea a fost trimisă spre aprobare"}
         </Typography>
         <Typography sx={{ color: "text.secondary", mb: 4 }}>
-          Echipa Made in Vrancea îți va verifica datele în cel mai scurt timp.
-          Vei primi o notificare imediat ce profilul este aprobat și publicat pe
-          hartă.
+          {isAdmin
+            ? "Profilul este activ și vizibil imediat în lista afacerilor și pe hartă."
+            : "Echipa Made in Vrancea îți va verifica datele în cel mai scurt timp. Vei primi o notificare imediat ce profilul este aprobat și publicat pe hartă."}
         </Typography>
+        {submissionWarning && (
+          <Alert severity="warning" sx={{ mb: 3, textAlign: "left" }}>
+            {submissionWarning}
+          </Alert>
+        )}
         <Button
           variant="contained"
           size="large"
-          onClick={() => navigate("/cont")}
+          onClick={() => navigate(isAdmin ? "/admin" : "/cont")}
         >
           Mergi la panou
         </Button>
@@ -429,10 +491,20 @@ export default function OnboardingPage() {
           <Stack spacing={3}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <Box sx={{ flex: 1 }}>
-                <UploadZone label="Logo" />
+                <UploadZone
+                  label="Logo"
+                  file={logoFile}
+                  mediaType="Logo"
+                  onChange={setLogoFile}
+                />
               </Box>
               <Box sx={{ flex: 1 }}>
-                <UploadZone label="Fotografie de copertă" />
+                <UploadZone
+                  label="Fotografie de copertă"
+                  file={coverFile}
+                  mediaType="Cover"
+                  onChange={setCoverFile}
+                />
               </Box>
             </Stack>
             <Divider />
@@ -488,7 +560,9 @@ export default function OnboardingPage() {
             {isLast
               ? submitting
                 ? "Se trimite…"
-                : "Trimite spre aprobare"
+                : isAdmin
+                  ? "Publică afacerea"
+                  : "Trimite spre aprobare"
               : "Continuă"}
           </Button>
         </Stack>

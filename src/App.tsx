@@ -17,9 +17,13 @@ const DashboardHomePage = lazy(
   () => import("./pages/dashboard/DashboardHomePage"),
 );
 const OnboardingPage = lazy(() => import("./pages/dashboard/OnboardingPage"));
+const EditBusinessPage = lazy(
+  () => import("./pages/dashboard/EditBusinessPage"),
+);
 const AdminDashboardPage = lazy(
   () => import("./pages/admin/AdminDashboardPage"),
 );
+const AdminOverviewPage = lazy(() => import("./pages/admin/AdminOverviewPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminCategoriesPage = lazy(
   () => import("./pages/admin/AdminCategoriesPage"),
@@ -48,18 +52,24 @@ export default function App() {
         <Route path="/autentificare" element={<LoginPage />} />
         <Route path="/inregistrare" element={<RegisterPage />} />
 
-        <Route element={<ProtectedRoute roles={["BusinessOwner", "Admin"]} />}>
+        <Route element={<ProtectedRoute roles={["BusinessOwner"]} />}>
           <Route path="/cont" element={<DashboardLayout variant="merchant" />}>
             <Route index element={<DashboardHomePage />} />
             <Route path="afacere-noua" element={<OnboardingPage />} />
+            <Route
+              path="afaceri/:businessId/editare"
+              element={<EditBusinessPage />}
+            />
           </Route>
         </Route>
 
         <Route element={<ProtectedRoute roles={["Admin"]} />}>
           <Route path="/admin" element={<DashboardLayout variant="admin" />}>
-            <Route index element={<AdminDashboardPage />} />
+            <Route index element={<AdminOverviewPage />} />
+            <Route path="cereri" element={<AdminDashboardPage />} />
             <Route path="utilizatori" element={<AdminUsersPage />} />
             <Route path="categorii" element={<AdminCategoriesPage />} />
+            <Route path="afacere-noua" element={<OnboardingPage />} />
           </Route>
         </Route>
       </Routes>

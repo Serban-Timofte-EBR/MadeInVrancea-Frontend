@@ -23,7 +23,7 @@ import { useAuth } from "../../auth/authContext";
 const navItems = [
   { label: "Acasă", to: "/" },
   { label: "Harta", to: "/harta" },
-  { label: "Director", to: "/director" },
+  { label: "Afaceri locale", to: "/director" },
 ];
 
 export default function Header() {

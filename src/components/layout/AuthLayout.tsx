@@ -68,7 +68,7 @@ export default function AuthLayout({
           <Typography
             sx={{ color: "rgba(255,255,255,0.82)", mb: 4, maxWidth: 420 }}
           >
-            Alătură-te directorului local și conectează-te cu mii de vizitatori,
+            Alătură-te comunității locale și conectează-te cu mii de vizitatori,
             turiști și localnici.
           </Typography>
           <Stack spacing={1.5}>

@@ -102,13 +102,13 @@ export default function DirectoryPage() {
       >
         <Container sx={{ py: { xs: 4, md: 5 } }}>
           <Typography variant="overline" sx={{ color: "secondary.dark" }}>
-            Director afaceri
+            Afaceri locale
           </Typography>
           <Typography
             variant="h3"
             sx={{ fontSize: { xs: "1.9rem", md: "2.4rem" }, mb: 2.5 }}
           >
-            Găsește exact ce cauți
+            Descoperă afacerile din Vrancea
           </Typography>
           <Box sx={{ maxWidth: 620 }}>
             <SearchBar

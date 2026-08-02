@@ -1,5 +1,10 @@
 import { apiRequest, toQuery } from "./http";
-import type { ApiBusiness, CreateBusinessInput, Paginated } from "./types";
+import type {
+  ApiBusiness,
+  CreateBusinessInput,
+  Paginated,
+  UpdateBusinessInput,
+} from "./types";
 
 export interface BusinessQuery {
   search?: string;
@@ -33,8 +38,25 @@ export function listMine(signal?: AbortSignal): Promise<ApiBusiness[]> {
   });
 }
 
+export function getOwned(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ApiBusiness> {
+  return apiRequest<ApiBusiness>(`/businesses/me/${id}`, {
+    auth: true,
+    signal,
+  });
+}
+
 export function listPending(signal?: AbortSignal): Promise<ApiBusiness[]> {
   return apiRequest<ApiBusiness[]>("/businesses/admin/pending", {
+    auth: true,
+    signal,
+  });
+}
+
+export function listAllForAdmin(signal?: AbortSignal): Promise<ApiBusiness[]> {
+  return apiRequest<ApiBusiness[]>("/businesses/admin/all", {
     auth: true,
     signal,
   });
@@ -43,6 +65,17 @@ export function listPending(signal?: AbortSignal): Promise<ApiBusiness[]> {
 export function create(input: CreateBusinessInput): Promise<ApiBusiness> {
   return apiRequest<ApiBusiness>("/businesses", {
     method: "POST",
+    body: input,
+    auth: true,
+  });
+}
+
+export function update(
+  id: string,
+  input: UpdateBusinessInput,
+): Promise<ApiBusiness> {
+  return apiRequest<ApiBusiness>(`/businesses/${id}`, {
+    method: "PATCH",
     body: input,
     auth: true,
   });

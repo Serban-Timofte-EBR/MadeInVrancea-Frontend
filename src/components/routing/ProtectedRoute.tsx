@@ -21,7 +21,7 @@ export default function ProtectedRoute({ roles }: { roles?: UserRole[] }) {
   }
 
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={user.role === "Admin" ? "/admin" : "/cont"} replace />;
   }
 
   return <Outlet />;

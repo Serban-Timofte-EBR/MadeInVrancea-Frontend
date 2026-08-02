@@ -116,3 +116,14 @@ export interface CreateBusinessInput {
     operatingHours?: OperatingHourInput[];
   };
 }
+
+export interface UpdateBusinessInput {
+  name?: string;
+  description?: string | null;
+  taxId?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  websiteURL?: string | null;
+  socialLinks?: Record<string, string> | null;
+  categoryIds?: string[];
+}

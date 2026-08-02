@@ -65,7 +65,7 @@ export default function BusinessProfilePage() {
           Profilul căutat nu există sau a fost eliminat.
         </Typography>
         <Button component={RouterLink} to="/director" variant="contained">
-          Înapoi la director
+          Înapoi la afaceri
         </Button>
       </Container>
     );
@@ -111,7 +111,7 @@ export default function BusinessProfilePage() {
         startIcon={<ArrowBackRoundedIcon />}
         sx={{ color: "text.secondary", mb: 1.5 }}
       >
-        Înapoi la director
+        Înapoi la afaceri
       </Button>
 
       {/* Cover — fixed responsive height keeps layout perfectly stable */}

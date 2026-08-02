@@ -51,10 +51,15 @@ const merchantNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   {
-    label: "Validare afaceri",
+    label: "Panou principal",
     to: "/admin",
-    icon: FactCheckRoundedIcon,
+    icon: DashboardRoundedIcon,
     end: true,
+  },
+  {
+    label: "Cereri onboarding",
+    to: "/admin/cereri",
+    icon: FactCheckRoundedIcon,
   },
   { label: "Utilizatori", to: "/admin/utilizatori", icon: PeopleRoundedIcon },
   { label: "Categorii", to: "/admin/categorii", icon: CategoryRoundedIcon },
@@ -69,9 +74,9 @@ function SidebarContent({
   variant: Variant;
   onNavigate?: () => void;
 }) {
-  const nav = variant === "admin" ? adminNav : merchantNav;
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const nav = variant === "admin" ? adminNav : merchantNav;
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||

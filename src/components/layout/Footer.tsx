@@ -17,7 +17,7 @@ const columns: { title: string; links: { label: string; to: string }[] }[] = [
     title: "Explorează",
     links: [
       { label: "Harta interactivă", to: "/harta" },
-      { label: "Director afaceri", to: "/director" },
+      { label: "Afaceri locale", to: "/director" },
       { label: "Categorii", to: "/director" },
     ],
   },

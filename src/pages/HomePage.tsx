@@ -104,7 +104,7 @@ export default function HomePage() {
           >
             <Box>
               <Chip
-                label="Județul Vrancea · Directorul digital"
+                label="Județul Vrancea · Afaceri locale"
                 sx={{
                   fontWeight: 700,
                   color: "primary.main",
@@ -156,7 +156,7 @@ export default function HomePage() {
                   onClick={submitSearch}
                   endIcon={<ArrowForwardRoundedIcon />}
                 >
-                  Caută în director
+                  Caută afaceri
                 </Button>
                 <Button
                   component={RouterLink}
