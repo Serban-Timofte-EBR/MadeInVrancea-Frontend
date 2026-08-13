@@ -6,6 +6,7 @@ import type {
   SocialLinks,
 } from "../types";
 import type { ApiBusiness, ApiMediaAsset } from "./types";
+import { API_ORIGIN } from "./http";
 
 const FOCSANI = { latitude: 45.6966, longitude: 27.1863 };
 
@@ -16,9 +17,9 @@ const placeholderLogo = (slug: string) =>
 const placeholderShot = (slug: string, n: number) =>
   `https://picsum.photos/seed/miv-${slug}-${n}/900/600`;
 
-/** Keep absolute URLs as-is; relative /uploads paths are served same-origin. */
+/** Keep absolute URLs as-is; prefix relative /uploads paths with the API origin when cross-origin. */
 function resolveUrl(url: string): string {
-  return url;
+  return /^https?:\/\//i.test(url) ? url : `${API_ORIGIN}${url}`;
 }
 
 function pickMedia(

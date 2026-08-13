@@ -2,6 +2,11 @@ import { getToken, clearToken } from "../auth/token";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
+/** Origin of the API (e.g. https://host.example.com), empty when same-origin/proxied. */
+export const API_ORIGIN = /^https?:\/\//i.test(BASE_URL)
+  ? BASE_URL.replace(/\/api\/?$/, "")
+  : "";
+
 /** Error thrown for any non-2xx API response (or a network failure). */
 export class ApiError extends Error {
   status: number;
